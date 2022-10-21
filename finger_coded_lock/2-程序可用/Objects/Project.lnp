@@ -1,0 +1,12 @@
+".\Objects\main.obj",
+".\Objects\LCD1602.obj",
+".\Objects\Delay.obj",
+".\Objects\MatrixKey.obj",
+".\Objects\iic.obj",
+".\Objects\servo.obj",
+".\Objects\CodedLock.obj",
+".\Objects\uart.obj",
+".\Objects\FPM10A.obj" 
+TO ".\Objects\Project" 
+PRINT(".\Listings\Project.m51") RAMSIZE(256) 
+DISABLEWARNING (16) 

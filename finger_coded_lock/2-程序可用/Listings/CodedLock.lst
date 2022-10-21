@@ -1,0 +1,278 @@
+C51 COMPILER V9.54   CODEDLOCK                                                             10/21/2022 21:32:10 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE CODEDLOCK
+OBJECT MODULE PLACED IN .\Objects\CodedLock.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE CodedLock.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings
+                    -\CodedLock.lst) TABS(2) OBJECT(.\Objects\CodedLock.obj)
+
+line level    source
+
+   1          #include "head.h"
+   2          
+   3          
+   4          extern u8 KeyValue;     //按键值
+   5          extern char fla;        //按键按下一次信号
+   6          extern unsigned int Servo0PwmDuty;//PWM脉冲宽度
+   7          
+   8          
+   9          
+  10          typedef struct {
+  11            unsigned int password_insurance; //保险密码
+  12            unsigned int password_open;   //用户密码
+  13            unsigned int password;        //当前输入密码值
+  14            unsigned int OPEN_time;       //打开次数
+  15          }codedlock_t;
+  16          
+  17          codedlock_t chen = {815,0,0,0};
+  18          
+  19          unsigned char count = 0; //数字按键按下次数
+  20          int mode = 1;
+  21          
+  22          int MODE_Choose()
+  23          {
+  24   1        if(KeyValue == 4 && fla == 0)
+  25   1        {
+  26   2          LCD_ShowString(2,1," *key  finger");
+  27   2          mode = 1;
+  28   2          fla = -1;
+  29   2        }
+  30   1        if(KeyValue == 12 && fla == 0)
+  31   1        {
+  32   2          LCD_ShowString(2,1,"  key *finger");
+  33   2          mode = 2;
+  34   2          fla = -1;
+  35   2        }
+  36   1        if(KeyValue == 8 && fla == 0)
+  37   1        {
+  38   2          fla = -1;
+  39   2          return mode;
+  40   2        }
+  41   1        return 0;
+  42   1      }
+  43          
+  44          void PassWord_Input()   //密码初始化
+  45          {
+  46   1      //  EEPROM_write(0x05,1256/256);delay_1ms(10);  //eeprom写入用户初始密码 第一次使用写入一次即可
+  47   1      //  EEPROM_write(0x06,1256%256);delay_1ms(10);
+  48   1      //  EEPROM_write(0x04,0%256);delay_1ms(10);     //eeprom写入开锁次数
+  49   1        
+  50   1          delay_1ms(100); 
+  51   1          chen.password_open = EEPROM_read(0x05) * 256;delay_1ms(10);
+  52   1          chen.password_open += EEPROM_read(0x06);delay_1ms(10); //上电读取用户密码
+  53   1        
+  54   1          chen.OPEN_time += EEPROM_read(0x04);delay_1ms(20);    //上电读取开锁次数
+C51 COMPILER V9.54   CODEDLOCK                                                             10/21/2022 21:32:10 PAGE 2   
+
+  55   1        
+  56   1      }
+  57          
+  58          
+  59          void reset()  //输入重置函数
+  60          {
+  61   1        chen.password = 0;  //当前输入密码值清零
+  62   1        count = 0;    //数字按键按下次数清零
+  63   1        LCD_ShowString(1,1,"===Coded Lock===");
+  64   1        LCD_ShowString(2,1,"Input:          "); //刷新界面
+  65   1        fla = -1;      //按键可读取信号
+  66   1      }
+  67          
+  68          void Key_Input() //密码按键输入函数
+  69          {
+  70   1        
+  71   1        if (count < 4 && fla == 0 && KeyValue % 4 != 0 && KeyValue != 13 && KeyValue != 15) 
+  72   1          {
+  73   2            
+  74   2              count += 1;
+  75   2              chen.password *= 10; 
+  76   2              switch(KeyValue)
+  77   2              {
+  78   3                case 5:chen.password += 4;break;
+  79   3                case 6:chen.password += 5;break;
+  80   3                case 7:chen.password += 6;break;  
+  81   3                case 9:chen.password += 7;break;
+  82   3                case 10:chen.password += 8;break;
+  83   3                case 11:chen.password += 9;break;
+  84   3                case 14:chen.password += 0;break;
+  85   3                default:chen.password += KeyValue;break;
+  86   3              }
+  87   2              LCD_ShowNum(2,7,chen.password,count);
+  88   2              fla = -1;
+  89   2          }
+  90   1      }
+  91          
+  92          
+  93          
+  94          void Key_Check()      //密码检查函数 KeyValue=16
+  95          {
+  96   1        
+  97   1        if (count == 4 && KeyValue == 16 && fla == 0)   
+  98   1        {
+  99   2            if (chen.password == chen.password_open || (chen.password == chen.password_insurance))    //用户密码正确 
+             -或输入保险密码
+ 100   2            {
+ 101   3              open_door();
+ 102   3              chen.OPEN_time++;
+ 103   3              reset();
+ 104   3            }
+ 105   2            else       //密码错误
+ 106   2            {
+ 107   3              LCD_ShowString(2,14,"ERR"); //显示ERR
+ 108   3              delay_1ms(1000);
+ 109   3              reset();
+ 110   3            }
+ 111   2          }
+ 112   1      }
+ 113          void Key_Change() //密码修改函数  KeyValue=13
+ 114          {
+ 115   1        unsigned int i = 0;
+C51 COMPILER V9.54   CODEDLOCK                                                             10/21/2022 21:32:10 PAGE 3   
+
+ 116   1        if(KeyValue == 13 && fla == 0) 
+ 117   1        {
+ 118   2          fla = -1;
+ 119   2          delay_1ms(10);
+ 120   2          i = EEPROM_read(0x04);    //读取eeprom中的开锁次数
+ 121   2          if(i != chen.OPEN_time)   //开锁次数与当前次数对比
+ 122   2          {
+ 123   3            LCD_ShowString(2,1,"PleaseChange");
+ 124   3            delay_1ms(1200);
+ 125   3            reset();
+ 126   3            while(1)
+ 127   3            {
+ 128   4              Key_Input();
+ 129   4              Key_Eliminate();
+ 130   4              if (count == 4 && KeyValue == 16 && fla == 0)
+ 131   4              {
+ 132   5                chen.password_open = chen.password;   
+ 133   5                delay_1ms(100);
+ 134   5                EEPROM_write(0x05,chen.password_open/256);delay_1ms(100); 
+ 135   5                EEPROM_write(0x06,chen.password_open%256);delay_1ms(100);
+ 136   5                if(chen.OPEN_time == 255) {chen.OPEN_time = 0;}
+ 137   5                EEPROM_write(0x04,chen.OPEN_time%256);delay_1ms(100);
+ 138   5      
+ 139   5                LCD_ShowString(2,11,"Change");
+ 140   5                delay_1ms(1200);
+ 141   5                reset();
+ 142   5                break;
+ 143   5              }
+ 144   4            }
+ 145   3          }
+ 146   2        }
+ 147   1      }
+ 148          void Key_Eliminate() //清除输入 KeyValue=15
+ 149          {
+ 150   1        if(KeyValue == 15 && fla == 0) 
+ 151   1        {
+ 152   2            reset();
+ 153   2        }
+ 154   1      }
+ 155          
+ 156          void Key_sudo()  //超级用户开锁 KeyValue=8 
+ 157          {
+ 158   1        static char sudo = 3;
+ 159   1        if(KeyValue == 8 && fla == 0 && sudo != 0)
+ 160   1        {
+ 161   2          sudo--;
+ 162   2          if(sudo == 0)
+ 163   2          {
+ 164   3            open_door();
+ 165   3          }
+ 166   2          reset();
+ 167   2        }
+ 168   1      }
+ 169          void open_door()  //开锁
+ 170          {
+ 171   1          LCD_ShowString(2,13,"OPEN");  //显示OPEN    
+ 172   1          Servo0PwmDuty = 2350;
+ 173   1          delay_1ms(2000);
+ 174   1          Servo0PwmDuty = 600;
+ 175   1      }
+ 176          
+ 177          void Finger_main()
+C51 COMPILER V9.54   CODEDLOCK                                                             10/21/2022 21:32:10 PAGE 4   
+
+ 178          {             
+ 179   1        LCD_ShowString(1,1,"Finger Test    ");//液晶开机显示界面
+ 180   1        LCD_ShowString(2,1,"                "); 
+ 181   1        Uart_Init();      //初始化串口
+ 182   1        
+ 183   1        delay_1ms(200);          //延时200MS，等待指纹模块复位
+ 184   1        Device_Check();       //校对指纹模块是否接入正确，液晶做出相应的提示
+ 185   1        delay_1ms(1000);      //对接成功界面停留一定时间
+ 186   1        P1 = 0xF0; 
+ 187   1        LCD_ShowString(1,1,"  search finger ");
+ 188   1        LCD_ShowString(2,1,"  Add   Delete  ");     
+ 189   1        while(1)
+ 190   1        {
+ 191   2          if(KeyValue == 16 && fla == 0)
+ 192   2            {
+ 193   3              fla = -1;
+ 194   3              break;
+ 195   3            }   
+ 196   2            /**************进入主功能界面****************/
+ 197   2          
+ 198   2      
+ 199   2          if(local_date==0)
+ 200   2          {
+ 201   3            LCD_ShowString(1,1," *search finger ");
+ 202   3            LCD_ShowString(2,1,"  Add   Delete  "); 
+ 203   3          }
+ 204   2          else if(local_date==1)
+ 205   2          {
+ 206   3            LCD_ShowString(1,1,"  search finger ");
+ 207   3            LCD_ShowString(2,1," *Add   Delete  "); 
+ 208   3          }
+ 209   2          else if(local_date==2)
+ 210   2          {
+ 211   3            LCD_ShowString(1,1,"  search finger ");
+ 212   3            LCD_ShowString(2,1,"  Add  *Delete ");
+ 213   3          }     
+ 214   2          //确认键
+ 215   2          if(KeyValue == 8 && fla == 0)
+ 216   2          {  
+ 217   3            fla = -1;               
+ 218   3            switch(local_date)
+ 219   3            {
+ 220   4                case 0:  //搜索指纹           
+ 221   4                FPM10A_Find_Fingerprint();                                                
+ 222   4                break;  
+ 223   4                
+ 224   4                case 1:  //添加指纹
+ 225   4                FPM10A_Add_Fingerprint();
+ 226   4                break;          
+ 227   4                
+ 228   4                case 2: //清空指纹
+ 229   4                FPM10A_Delete_All_Fingerprint();
+ 230   4                break;
+ 231   4              }
+ 232   3            }
+ 233   2            //切换键 KeyValue == 12
+ 234   2            if(KeyValue == 12 && fla == 0)
+ 235   2            {
+ 236   3              fla = -1;     
+ 237   3              if (local_date <= 2)
+ 238   3              {
+ 239   4      
+C51 COMPILER V9.54   CODEDLOCK                                                             10/21/2022 21:32:10 PAGE 5   
+
+ 240   4                if(++local_date == 3)local_date = 0;            
+ 241   4              }   
+ 242   3            }           
+ 243   2            delay_1ms(100); //延时判断100MS检测一次   
+ 244   2        }
+ 245   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    923    ----
+   CONSTANT SIZE    =    208    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     12    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

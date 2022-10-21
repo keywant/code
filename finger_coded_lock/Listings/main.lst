@@ -1,0 +1,72 @@
+C51 COMPILER V9.54   MAIN                                                                  10/21/2022 20:55:13 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\main
+                    -.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include "head.h"
+   2          
+   3          extern u8 KeyValue;
+   4          extern char fla;
+   5          
+   6          void main()
+   7          {
+   8   1        int MODE = 0;
+   9   1        LCD_Init();       //1602初始化
+  10   1        Key_Init();       //按键初始化
+  11   1        Car_Servo_Init(); //舵机初始化
+  12   1        LCD_ShowString(1,1," Please Choose"); 
+  13   1        LCD_ShowString(2,1," *key  finger ");
+  14   1        
+  15   1        while(MODE == 0) //模式选择
+  16   1        {
+  17   2          MODE = MODE_Choose();
+  18   2        }
+  19   1        
+  20   1        if(MODE == 1)
+  21   1        {
+  22   2          PassWord_Input(); //密码初始化
+  23   2          /***界面显示***/
+  24   2          LCD_ShowString(1,1,"===Coded Lock===");
+  25   2          LCD_ShowString(2,1,"Input:          ");
+  26   2        
+  27   2          while(1)
+  28   2          { 
+  29   3            if(KeyValue == 12 && fla == 0) 
+  30   3            {
+  31   4                fla = -1;
+  32   4                break;
+  33   4            }
+  34   3            
+  35   3            Key_Input();
+  36   3            Key_Check();
+  37   3            Key_Eliminate();
+  38   3            Key_Change();
+  39   3            Key_sudo();
+  40   3          }
+  41   2        }
+  42   1        if(MODE == 2)
+  43   1        {
+  44   2            Finger_main();
+  45   2        }
+  46   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    135    ----
+   CONSTANT SIZE    =     64    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----       2
+C51 COMPILER V9.54   MAIN                                                                  10/21/2022 20:55:13 PAGE 2   
+
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
